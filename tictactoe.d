@@ -1,11 +1,20 @@
 import std.stdio;
 import std.exception;
 import std.conv;
+import std.random;
 
 enum CellValue : uint {
     NONE,
     X,
     O
+}
+
+struct GameBoardState(uint dim) {
+    const CellValue[dim][dim] matrix;
+
+    CellValue getCell(uint x, uint y) {
+        return matrix[x][y];
+    }
 }
 
 struct GameBoard(uint dim) {
@@ -19,6 +28,10 @@ struct GameBoard(uint dim) {
 
         board_matrix[x][y] = value;
         num_of_filled_cells++;
+    }
+
+    GameBoardState!dim getState() {
+        return GameBoardState!dim(board_matrix);
     }
 
     void printRow(uint i) {
@@ -78,34 +91,45 @@ struct GameBoard(uint dim) {
     }
 }
 
-struct Game(Board, alias player1, alias player2) {
-    alias Player = uint[2] function(); 
-    static assert(is(typeof(&player1) == Player));
-    static assert(is(typeof(&player2) == Player));
-
-    Board board;
-
-    bool playTurnAndIsWin(CellValue value, Player player) {
-        auto cell_to_set = player();
-        board.setCell(cell_to_set[0], cell_to_set[1], value);
-
-        board.printBoard();
-
-        if (checkWin(cell_to_set[0], cell_to_set[1], value)) {
-            writeln(value, " Wins !");
-            return true;
-        }
-
-        return false;
+struct Player(uint board_dim, alias play_func) {
+    uint[2] play(GameBoardState!board_dim state) {
+        return play_func!board_dim(state);
     }
+}
+
+struct Game(uint board_dim, alias player1, alias player2) {
+
+    GameBoard!board_dim board;
 
     void run() {
         while (board.isFull() == false) {
-            foreach (symbol, player; [CellValue.X: &player1, CellValue.O: &player2])
-            if (playTurnAndIsWin(symbol, player)) {
-                return;
+            foreach (symbol; [CellValue.X, CellValue.O]) {
+                uint[2] cell_to_set;
+
+                if (symbol == CellValue.X) {
+                    cell_to_set = player1.play(board.getState);
+                } else {
+                    cell_to_set = player2.play(board.getState);
+                }
+
+                // play
+                //auto cell_to_set = player.play(board.getState);
+                board.setCell(cell_to_set[0], cell_to_set[1], symbol);
+                board.printBoard();
+
+                // check for win
+                if (checkWin(cell_to_set[0], cell_to_set[1], symbol)) {
+                    writeln(symbol, " Wins !");
+                    return;
+                }
+
+                if (board.isFull()) {
+                    break;
+                }
             }            
         }
+
+        writeln("It's a tie !");
     }
 
     bool checkWin(uint x, uint y, CellValue value) {
@@ -124,11 +148,9 @@ struct Game(Board, alias player1, alias player2) {
     }
 }
 
-alias RegGameBoard = GameBoard!3;
-
 // ############## Players Method ##############
 
-uint[2] stdinPlay() {
+uint[2] stdinPlay(uint dim)(GameBoardState!dim state) {
     write("Enter Row: ");
     auto x = to!uint(readln()[0..$-1]);
 
@@ -138,17 +160,19 @@ uint[2] stdinPlay() {
     return [x, y];
 }
 
-uint[2] stdinPlay() {
-    write("Enter Row: ");
-    auto x = to!uint(readln()[0..$-1]);
+uint[2] randomPlay(uint dim)(GameBoardState!dim state) {
+    uint[2] move = [uniform(0, dim), uniform(0, dim)];
+    while (state.getCell(move[0], move[1]) != CellValue.NONE) {
+        move = [uniform(0, dim), uniform(0, dim)];
+    }
 
-    write("Enter Column: ");
-    auto y = to!uint(readln()[0..$-1]);
-
-    return [x, y];
+    writeln(move);
+    return move;
 }
 
 void main() {
-    Game!(RegGameBoard, stdinPlay, stdinPlay) game;
+    Player!(3, randomPlay) p1;
+    Player!(3, randomPlay) p2;
+    Game!(3, p1, p2) game;
     game.run();
 }
