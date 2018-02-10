@@ -134,7 +134,7 @@ struct Game(uint board_dim, alias player1, alias player2) {
 
     bool checkWin(uint x, uint y, CellValue value) {
         if (board.isRowWin(x, value)) return true;
-        if (board.isColumnWin(x, value)) return true;
+        if (board.isColumnWin(y, value)) return true;
         
         if (x == y) {
             if (board.isMainDiagonalWin(value)) return true;
