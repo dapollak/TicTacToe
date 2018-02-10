@@ -2,6 +2,7 @@ import std.stdio;
 import std.exception;
 import std.conv;
 import std.random;
+import std.meta;
 
 enum CellValue : uint {
     NONE,
@@ -103,17 +104,10 @@ struct Game(uint board_dim, alias player1, alias player2) {
 
     void run() {
         while (board.isFull() == false) {
-            foreach (symbol; [CellValue.X, CellValue.O]) {
-                uint[2] cell_to_set;
+            foreach (i, player; AliasSeq!(player1, player2)) {
+                auto symbol = cast(CellValue)(i+1);
 
-                if (symbol == CellValue.X) {
-                    cell_to_set = player1.play(board.getState);
-                } else {
-                    cell_to_set = player2.play(board.getState);
-                }
-
-                // play
-                //auto cell_to_set = player.play(board.getState);
+                auto cell_to_set = player.play(board.getState);
                 board.setCell(cell_to_set[0], cell_to_set[1], symbol);
                 board.printBoard();
 
@@ -172,7 +166,7 @@ uint[2] randomPlay(uint dim)(GameBoardState!dim state) {
 
 void main() {
     Player!(3, randomPlay) p1;
-    Player!(3, randomPlay) p2;
+    Player!(3, stdinPlay) p2;
     Game!(3, p1, p2) game;
     game.run();
 }
